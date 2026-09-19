@@ -1,13 +1,13 @@
 {
-  "name": "jev-little-world",
-  "version": "3.0.0",
+  "name": "jev-pixel-studio",
+  "version": "4.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "node --test",
-    "check": "node --check src/worker.js && node --check src/decisions.js && node --check public/world.js && node --check public/app.js"
+    "check": "node --check src/worker.js && node --check src/art.js && node --check public/app.js && node --check public/autodraw.js && node --check public/palette.js"
   },
   "devDependencies": {
     "wrangler": "4.135.0"

@@ -1,27 +1,36 @@
-# Jev 小世界 · 微光島
+# Jev 像素畫室
 
-八位不同個性的居民生活在一座可干預的小島。文字公告、天氣、停電、共享食物、物品和島規會影響下一輪 Jev 決策。
+手機優先的像素畫室。輸入停頓 1 秒即生成；中文輸入法組字期間不啟動。後續輸入立即取消舊請求，只接受最新版本的串流。小世界已移除。
 
-## 技術
+## 畫作
 
-原生 HTML / CSS / JavaScript、SVG 小島、Cloudflare Workers + Static Assets。伺服器透過 TypeSafe System One HTTP API 使用 `jev-latest`，金鑰僅存在 Worker secret / 本機 `.dev.vars`。
+- 原生 32 / 48 / 64 像素，預設 64 × 64（4,096 像素，為舊 16 × 16 的 16 倍）。
+- 三組各 32 色的調色盤。
+- Jev 兩階段規劃最多 16 個通用幾何部件，選擇輪廓、位置、顏色、材質與照明；程式維持部件連接和尺寸約束，並進行原生解析度光柵化。
+- Jev 再批次判斷較大主體的內部像素是否保留、柔化或加深已有光影。背景、輪廓與小型扁平細節直接沿用構圖，並非每一像素皆單獨呼叫模型。
+- 128 題一批、最多 4 個同時進行，64px 最多 32 批；兩次構圖加上全流程最多 4 次重試，不超過 38 次上游請求。
+- 構圖預覽與細化結果逐步串流顯示；失敗或中止保留預覽，但不假裝生成完成。
+- 這是 Jev 結構化決策的像素繪畫實驗，複雜場景、文字與精確位置不保證能準確呈現。
 
-- `public/world.js`：固定人物、世界狀態、需求、資源與行動結算。
-- `src/decisions.js`：批次 Choice 問題與完整機率驗證。
-- `src/worker.js`：輸入驗證、來源檢查、速率限制、逾時與 API 路由。
-- `public/app.js`：觀察控制、SVG 角色、角色面板、本機儲存。
+## 手機體驗
 
-每回合 8 個行動 Choice，加上 8 個社交對象 Choice，在同一份狀態上批次推論。社交對象只在分享／求助時使用。程式依輪替優先順序結算競爭，同時保留模型意圖和實際結果。記憶保留最近 6 則，世界日誌最近 70 則。沒有假造模型推論或背景離線模擬。
+使用 Visual Viewport 調整可視高度，鍵盤展開時保留畫布與輸入，收起次要選項。輸入字級 16px 避免 iOS 聚焦自動縮放；安全區適配、觸控色盘、可捲動靈感列、放大檢視、沒有外部字型下載。
 
-自然語言干預會解析天氣、電力、食物、派對、島規與物品 6 個維度。支援兩份／歸零／增加 8 份食物、食物箱（4份）、雨傘（3把）、發電機、音箱與神祕物件；未支援的物理效果不會自動生成新程式，公告仍提供角色理解。相同類型的物品使用固定名稱。果樹每 3 回合補充最多 4 份。自動模式每次完成後等待 12 秒，最多連跑 12 回合，隱藏分頁即暫停。
+儲存輸出為原生尺寸 × 16 的整數放大 PNG（預設 1024 × 1024），關閉平滑處理。支援檔案分享的觸控裝置開啟系統分享選單；其餘使用下載。最多 6 張完成作品保存於本機瀏覽器，草稿、細緻度和色盤一起保存。切換到背景時取消待處理生成。
 
-世界由瀏覽器保存；此為可修改本機狀態的單人沙盒，並非防作弊的多人伺服器。API 不存取私人資源。Choice 機率代表可用行動的相對傾向，並非客觀真實心理。
+## 架構
 
-## 開發與測試
+原生 HTML / CSS / ES Modules、Canvas、Cloudflare Worker + Static Assets。
+
+- `src/art.js`：TypeSafe Choice 構圖、光柵化、逐像素光影與回應驗證。
+- `src/worker.js`：輸入驗證、IP 限速、有限併發、串流、取消、逾時與退避重試。
+- `public/autodraw.js`：可測試的防抖、IME 與取消排程。
+- `public/app.js`：手機畫室、串流更新、版本隔離、PNG 匯出與歷史。
+
+TypeSafe API 金鑰只放在忽略的 `.dev.vars` / Cloudflare `TYPESAFE_API_KEY` secret，不進入公開資產。
 
 ```sh
 npm install
-# 將 TYPESAFE_API_KEY 設定於忽略的 .dev.vars；勿放進 public/
 npm run dev
 npm run check
 npm test
@@ -29,10 +38,10 @@ npm test
 
 ## 部署
 
-使用 Cloudflare 官方 Wrangler。先 `git add -A`、commit、push 目前分支，成功後才執行 `npm run deploy`。已有 `TYPESAFE_API_KEY` Worker secret 與每分鐘 12 次的 IP rate limiter。
+依專案規則先 `git add -A` → commit → push 目前分支，成功後使用 Cloudflare 官方 Wrangler：`npm run deploy`。
 
-部署網址：https://jev-decision-lab.terry9251623.workers.dev
+https://jev-decision-lab.terry9251623.workers.dev
 
-舊 Pixel Lab 與 `/api/pixels` 已移除（404）。
+`/api/pixels` 為唯一模型端點。舊小世界 `/api/step`、`/api/intervene` 返回 404。
 
-官方文件：[HTTP API](https://docs.typesafe.ai/api)、[Choice](https://docs.typesafe.ai/primitives/choice)、[Function calling](https://docs.typesafe.ai/cookbooks/function_calling)。
+官方參考：[API](https://docs.typesafe.ai/api)、[Choice](https://docs.typesafe.ai/primitives/choice)、[Function calling](https://docs.typesafe.ai/cookbooks/function_calling)。
