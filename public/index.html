@@ -2,251 +2,493 @@
 <html lang="zh-Hant">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#eeeae2" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f5f3ec" />
     <meta
       name="description"
-      content="用 Jev 的 256 個選色判斷創作像素畫。觀看每一輪變化、探索每個像素的機率，下載你的作品。"
+      content="一句話，改變八個人的小世界。干預微光島的天氣、物資與島規，觀察 Jev 島民的選擇與連鎖反應。"
     />
-    <title>Jev Pixel Lab — 像素實驗室</title>
-    <link
-      rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23e75b32' d='M4 4h24v24H4z'/%3E%3Cpath fill='%23fff2db' d='M10 9h12v4H10zm0 4h4v10h-4zm4 0h8v4h-8z'/%3E%3C/svg%3E"
-    />
+    <title>Jev 小世界 — 微光島觀察日誌</title>
     <link rel="stylesheet" href="/style.css" />
-    <script type="module" src="/app.js"></script>
   </head>
   <body>
-    <header class="topbar">
-      <a href="/" class="brand"
-        ><span class="brand-icon" aria-hidden="true">▟</span
-        ><strong>JEV<span>PIXEL LAB</span></strong
-        ><span class="edition">EXPERIMENT № 01</span></a
+    <header class="masthead">
+      <a class="brand" href="/" aria-label="Jev 小世界首頁"
+        ><span class="brand-mark">✳</span
+        ><span
+          >Jev 小世界<small>A LITTLE WORLD, MANY POSSIBILITIES</small></span
+        ></a
       >
-      <a
-        href="https://docs.typesafe.ai/"
-        target="_blank"
-        rel="noreferrer"
-        class="docs"
-        >ABOUT JEV ↗</a
-      >
+      <div class="header-right">
+        <span class="live-pill"><i></i> POWERED BY JEV</span
+        ><button id="about" class="text-button">這座島怎麼運作？ ↗</button>
+      </div>
     </header>
     <main>
       <section class="intro">
         <div>
-          <div class="kicker">
-            <span></span> A LITTLE EXPERIMENT IN MACHINE IMAGINATION
-          </div>
-          <h1>每一格，<span>都是一個決定。</span></h1>
-          <p>給 Jev 一個想像，看 256 次選色判斷，拼出你的像素世界。</p>
+          <div class="eyebrow">YOUR WORDS. THEIR WORLD.</div>
+          <h1>一座小島，<span>八種生活。</span></h1>
+          <p>你改變世界。他們決定如何生活。然後，故事就發生了。</p>
         </div>
-        <div class="intro-stamp">
-          <strong>16 × 16</strong
-          ><span>SMALL CANVAS.<br />CURIOUS MACHINE.</span
-          ><i aria-hidden="true">✳</i>
+        <div class="island-stamp">
+          微光島 <span>EST. TODAY</span
+          ><svg viewBox="0 0 80 24" aria-hidden="true">
+            <path
+              d="M0 16q10-12 20 0t20 0t20 0t20 0M0 23q10-12 20 0t20 0t20 0t20 0"
+            />
+          </svg>
         </div>
       </section>
-      <section class="studio" aria-label="像素創作工作室">
-        <aside class="controls">
-          <div class="panel-heading">
-            <span>01</span>
-            <h2>你的想像</h2>
-            <span class="mono">THE PROMPT</span>
-          </div>
-          <label for="prompt">想畫些什麼？</label>
-          <textarea
-            id="prompt"
-            maxlength="600"
-            placeholder="一顆紅蘋果、一隻太空貓，或午夜的山景…"
-          ></textarea>
-          <div class="field-note">
-            <span>小畫布適合簡單形狀與明確位置</span
-            ><span id="char-count">0/600</span>
-          </div>
-          <div class="examples" id="examples" aria-label="靈感範例"></div>
-          <div class="control-label">
-            <label for="palette">調色盤</label
-            ><span class="mono">16 COLORS</span>
-          </div>
-          <select id="palette"></select>
-          <div
-            id="palette-swatches"
-            class="palette-swatches"
-            aria-label="調色盤色彩"
-          ></div>
-          <div class="control-label">
-            <label for="rounds">自動修正</label
-            ><output id="round-label" for="rounds">1 輪</output>
-          </div>
-          <input id="rounds" type="range" min="0" max="3" value="1" step="1" />
-          <div class="range-labels">
-            <span>只畫一輪</span><span>最多修正 3 輪</span>
-          </div>
-          <label class="guided-label"
-            ><input id="guided" type="checkbox" checked /> 構圖引導
-            <span>建議開啟</span></label
-          >
-          <p class="guided-note">
-            先由 Jev 選擇形狀與位置，再逐格選色。關閉可試純像素判斷。
-          </p>
-          <p class="hint">
-            修正會參考鄰近像素重新選色，可以比較每一輪，挑你最喜歡的版本。
-          </p>
-          <button id="generate" class="primary">
-            <span>✳</span> 讓 Jev 畫畫 <span>↗</span>
-          </button>
-          <button id="stop" class="stop" hidden>■ 停止生成</button>
-          <button id="refine" class="secondary" disabled>
-            ↻ 用目前描述再修一輪
-          </button>
-          <p class="privacy">
-            描述會傳送至 TypeSafe。每輪 256
-            個選色判斷，另含構圖問題；複雜場景不一定能完整呈現。
-          </p>
-          <p id="error" role="alert" hidden></p>
-        </aside>
-        <section class="canvas-panel">
-          <div class="canvas-toolbar">
-            <div class="canvas-title">
-              <span class="status-dot" id="status-dot"></span
-              ><span id="canvas-title">UNTITLED / 尚未生成</span>
+      <div class="workspace">
+        <section class="world-column" aria-label="小島世界">
+          <div class="island-card">
+            <div class="map-toolbar">
+              <div>
+                <span class="live-dot"></span><strong>微光島</strong
+                ><span class="coordinates">24° N · 121° E</span>
+              </div>
+              <span id="world-time">第 1 天 · 14:00</span>
             </div>
-            <div class="view-tools">
-              <button id="grid-toggle" title="顯示像素格線" aria-pressed="true">
-                ▦ <span>格線</span></button
-              ><button
-                id="heat-toggle"
-                title="檢視各像素的選色信心"
-                aria-pressed="false"
+            <div id="scene" class="scene">
+              <div class="scene-sky"></div>
+              <svg
+                id="island"
+                viewBox="0 0 1000 680"
+                role="img"
+                aria-label="微光島地圖：果樹林、共享食堂、小屋、派對廣場、發電站與沙灘"
               >
-                ◐ <span>信心</span>
+                <defs>
+                  <linearGradient id="ocean" x2="0" y2="1">
+                    <stop stop-color="#cce5da" />
+                    <stop offset="1" stop-color="#8dc2b6" />
+                  </linearGradient>
+                  <linearGradient id="land" x2="0.7" y2="1">
+                    <stop stop-color="#bed5a0" />
+                    <stop offset="1" stop-color="#87ae7d" />
+                  </linearGradient>
+                  <linearGradient id="roof" x2="0" y2="1">
+                    <stop stop-color="#dba37d" />
+                    <stop offset="1" stop-color="#bd7e5c" />
+                  </linearGradient>
+                  <filter
+                    id="shadow"
+                    x="-30%"
+                    y="-30%"
+                    width="160%"
+                    height="180%"
+                  >
+                    <feDropShadow
+                      dx="0"
+                      dy="8"
+                      stdDeviation="8"
+                      flood-color="#325e45"
+                      flood-opacity=".14"
+                    />
+                  </filter>
+                  <g id="tree">
+                    <ellipse
+                      cy="8"
+                      rx="25"
+                      ry="9"
+                      fill="#35674e"
+                      opacity=".15"
+                    />
+                    <path
+                      d="M0 0v-48"
+                      stroke="#796e4b"
+                      stroke-width="7"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M-31-35Q-40-58-18-66Q-14-90 9-83Q35-87 32-63Q51-40 28-27Q4-14-20-27Z"
+                      fill="#508b66"
+                    />
+                    <path
+                      d="M-23-54q-4-20 17-23q24-8 29 12q-15-9-22 5q-15-8-24 6"
+                      fill="#72a16d"
+                    />
+                    <circle cx="16" cy="-43" r="5" fill="#e6ad70" />
+                    <circle cx="-17" cy="-53" r="4" fill="#ecc280" />
+                  </g>
+                  <g id="pine">
+                    <ellipse
+                      cy="8"
+                      rx="22"
+                      ry="8"
+                      fill="#35674e"
+                      opacity=".13"
+                    />
+                    <path d="M0 0v-54" stroke="#766d48" stroke-width="6" />
+                    <path
+                      d="M0-104L-26-56H-17L-35-24Q0-8 35-24L17-56H26Z"
+                      fill="#487f64"
+                    />
+                    <path
+                      d="M0-104L0-19Q19-20 35-24L17-56H26Z"
+                      fill="#3c725b"
+                    />
+                  </g>
+                  <g id="bush">
+                    <ellipse rx="24" ry="13" fill="#769b68" />
+                    <circle cx="-7" cy="-8" r="12" fill="#86aa70" />
+                    <circle cx="10" cy="-7" r="14" fill="#86aa70" />
+                  </g>
+                  <g id="rock">
+                    <path
+                      d="M-20 0L-13-18L5-24L24-10L18 6L-9 9Z"
+                      fill="#a7b3a1"
+                    />
+                    <path d="M-13-18L5-24L12-9L-20 0Z" fill="#c3ccbc" />
+                  </g>
+                  <g id="flower">
+                    <path d="M0 0v-10" stroke="#769264" stroke-width="2" />
+                    <circle cy="-12" r="4" fill="#f8e4b1" />
+                    <circle cy="-12" r="1.7" fill="#dca571" />
+                  </g>
+                  <g id="hut">
+                    <ellipse
+                      cy="20"
+                      rx="57"
+                      ry="19"
+                      fill="#638365"
+                      opacity=".18"
+                    />
+                    <path d="M-42-38H42V13L0 32L-42 13Z" fill="#ede0bc" />
+                    <path d="M0-23L42-38V13L0 32Z" fill="#d1c5a4" />
+                    <path d="M-55-35L-9-89L55-53L9 0Z" fill="url(#roof)" />
+                    <path d="M-55-35L9 0L-9-61Z" fill="#dfab83" />
+                    <path d="M9 0L55-53L47-58L1-5Z" fill="#9c6a50" />
+                    <path d="M-25-4L-9 4V24L-25 17Z" fill="#786c50" />
+                    <path d="M16-4L30-10V1L16 7Z" fill="#f6d68d" />
+                    <path d="M27-75v-26l13 7v28" fill="#c3b79e" />
+                  </g>
+                </defs>
+                <rect width="1000" height="680" fill="url(#ocean)" />
+                <g fill="none" stroke="#eff6df" stroke-width="2" opacity=".5">
+                  <path
+                    d="M61 249q24 12 48 0M785 117q27 13 55 0M867 301q22 11 44 0M116 488q20 10 40 0M696 605q27 11 54 0M428 81q20 10 40 0M69 361q15 7 30 0M835 496q15 9 40 0M167 569q22 7 39 0"
+                  />
+                </g>
+                <path
+                  d="M202 202Q261 114 379 150Q491 100 600 151Q753 141 815 257Q901 333 824 438Q824 522 675 554Q560 624 447 565Q297 579 213 483Q119 445 150 337Q100 263 202 202Z"
+                  fill="#e5ebcb"
+                  opacity=".43"
+                />
+                <path
+                  d="M212 207Q275 130 381 163Q487 119 601 167Q737 151 802 269Q877 335 808 433Q805 508 672 539Q562 605 449 550Q302 565 226 469Q138 436 166 336Q119 268 212 207Z"
+                  fill="#eadcaa"
+                  filter="url(#shadow)"
+                />
+                <path
+                  d="M217 213Q281 146 381 179Q487 136 601 181Q737 169 782 273Q852 335 788 425Q782 488 664 522Q559 576 451 532Q316 548 246 458Q159 427 185 335Q142 269 217 213Z"
+                  fill="url(#land)"
+                />
+                <path
+                  d="M255 425Q267 468 329 477Q354 499 397 536Q314 550 228 468Q164 443 159 395Z"
+                  fill="#e7d7a4"
+                />
+                <path
+                  d="M272 247Q367 243 467 266T661 239M473 268Q453 341 503 398Q557 447 647 464M500 397Q424 436 301 445M511 388Q630 348 742 362M474 304Q363 324 302 310"
+                  fill="none"
+                  stroke="#d5cd9f"
+                  stroke-width="25"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M272 247Q367 243 467 266T661 239M473 268Q453 341 503 398Q557 447 647 464M500 397Q424 436 301 445M511 388Q630 348 742 362"
+                  fill="none"
+                  stroke="#e2d7af"
+                  stroke-width="17"
+                  stroke-linecap="round"
+                />
+                <g opacity=".8">
+                  <use href="#bush" x="369" y="201" />
+                  <use href="#bush" x="585" y="220" />
+                  <use href="#bush" x="581" y="518" />
+                  <use href="#bush" x="772" y="425" />
+                  <use href="#rock" x="188" y="316" />
+                  <use href="#rock" x="795" y="403" />
+                  <use href="#rock" x="699" y="516" />
+                </g>
+                <g>
+                  <use href="#tree" x="254" y="222" />
+                  <use href="#tree" x="303" y="197" />
+                  <use href="#tree" x="337" y="232" />
+                  <use href="#tree" x="212" y="267" />
+                  <use href="#tree" x="287" y="281" />
+                  <use href="#pine" x="386" y="194" />
+                  <use href="#pine" x="736" y="281" />
+                  <use href="#tree" x="775" y="312" />
+                  <use href="#pine" x="705" y="248" />
+                </g>
+                <g transform="translate(453 220)">
+                  <use href="#hut" transform="scale(1.15)" />
+                  <path d="M-58 20L-58 42L-24 57L-24 36Z" fill="#986d48" />
+                  <path d="M-58 20L-32 9L3 24L-24 36Z" fill="#bc9669" />
+                  <circle cx="-34" cy="21" r="5" fill="#e69c64" />
+                  <circle cx="-23" cy="24" r="5" fill="#d5b665" />
+                </g>
+                <g transform="translate(651 207)">
+                  <use href="#hut" />
+                  <use href="#hut" transform="translate(57 49) scale(.64)" />
+                </g>
+                <g transform="translate(724 337)">
+                  <ellipse
+                    cy="15"
+                    rx="45"
+                    ry="17"
+                    fill="#739274"
+                    opacity=".4"
+                  />
+                  <path d="M-35-36L7-49L37-29V10L-5 24L-35 6Z" fill="#b6c0aa" />
+                  <path d="M-35-36L7-49L37-29L-5-15Z" fill="#d1d5bb" />
+                  <path d="M-5-15L37-29V10L-5 24Z" fill="#8c9e92" />
+                  <path
+                    d="M-24-24v22m9-18v22"
+                    stroke="#647c70"
+                    stroke-width="4"
+                  />
+                  <path d="M10-9L2 6H12L5 17L24 1H13L21-13Z" fill="#f5dd87" />
+                  <path d="M20-43V-82" stroke="#697f70" stroke-width="7" />
+                  <path d="M11-82h18" stroke="#697f70" stroke-width="4" />
+                  <circle
+                    id="power-lamp"
+                    cx="20"
+                    cy="-79"
+                    r="7"
+                    fill="#ffe7a7"
+                  />
+                </g>
+                <g transform="translate(495 392)">
+                  <ellipse rx="65" ry="32" fill="#c1bd92" />
+                  <ellipse rx="51" ry="25" fill="#d8c6a1" />
+                  <path
+                    d="M-13 3L15-9M-15-7L15 7"
+                    stroke="#98724f"
+                    stroke-width="8"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    id="bonfire"
+                    d="M0 6Q-20-4-6-22Q-6-11 2-27Q23-4 0 6Z"
+                    fill="#e8a063"
+                  />
+                  <path
+                    d="M-86-39L-82-103M81-30L85-96"
+                    stroke="#8c8057"
+                    stroke-width="4"
+                  />
+                  <path
+                    d="M-82-103Q0-58 85-96"
+                    stroke="#83845d"
+                    fill="none"
+                    stroke-width="2"
+                  />
+                  <g id="party-flags">
+                    <path
+                      d="M-64-94l7 18 8-14M-30-82l7 19 8-17M6-78l7 18 8-19M44-83l7 16 8-20"
+                      fill="#d99d82"
+                    />
+                  </g>
+                </g>
+                <g transform="translate(638 479)">
+                  <ellipse rx="50" ry="21" fill="#759768" />
+                  <ellipse rx="42" ry="15" fill="#91b17d" />
+                  <use href="#flower" x="-24" y="0" />
+                  <use href="#flower" x="12" y="8" />
+                  <use href="#flower" x="-4" y="-6" />
+                  <use href="#flower" x="29" y="-3" />
+                </g>
+                <g transform="translate(277 457)">
+                  <path
+                    d="M0 0q-15-45 6-95"
+                    fill="none"
+                    stroke="#9c895d"
+                    stroke-width="8"
+                  />
+                  <path
+                    d="M6-94q-44-25-60 12q36-13 55-3M6-94q35-41 63-9q-35-4-58 20M7-94q-6-45 29-41q-19 20-24 49"
+                    fill="#4c8b68"
+                  />
+                </g>
+                <g stroke="#647960" fill="none" stroke-width="2.5" opacity=".7">
+                  <path
+                    d="M825 201q8-10 16 0q8-10 16 0M164 166q7-8 14 0q7-8 14 0"
+                  />
+                </g>
+                <g fill="#769469" opacity=".4">
+                  <circle cx="352" cy="399" r="3" />
+                  <circle cx="361" cy="403" r="2" />
+                  <circle cx="579" cy="292" r="3" />
+                  <circle cx="585" cy="298" r="2" />
+                  <circle cx="675" cy="393" r="3" />
+                </g>
+              </svg>
+              <div id="night-shade" class="night-shade"></div>
+              <div id="rain" class="rain" aria-hidden="true"></div>
+              <div id="place-labels"></div>
+              <div id="residents"></div>
+              <div id="objects"></div>
+              <div class="map-weather" id="weather-badge">
+                ☀ 晴朗 · 電力正常
+              </div>
+              <div class="map-note">點一位島民，看看他的世界。</div>
+              <div class="compass" aria-hidden="true">N<span>↑</span></div>
+            </div>
+            <div class="world-stats">
+              <div>
+                <span class="stat-icon">◒</span
+                ><span
+                  >共享食物<strong id="shared-food"
+                    >8 <small>份</small></strong
+                  ></span
+                >
+              </div>
+              <div>
+                <span class="stat-icon">✿</span
+                ><span
+                  >林間果實<strong id="forest-food"
+                    >12 <small>份</small></strong
+                  ></span
+                >
+              </div>
+              <div>
+                <span class="stat-icon">♡</span
+                ><span
+                  >平均飢餓<strong id="avg-hunger"
+                    >43 <small>/ 100</small></strong
+                  ></span
+                >
+              </div>
+              <div>
+                <span class="stat-icon">⚑</span
+                ><span>目前島規<strong id="policy">自由生活</strong></span>
+              </div>
+            </div>
+            <div class="world-bulletin">
+              <span>島上公告</span>
+              <p id="announcement"></p>
+            </div>
+            <div class="transport">
+              <div>
+                <button id="play" class="primary">▶ 開始觀察</button
+                ><button id="step" class="secondary">前進一回合 →</button>
+              </div>
+              <span id="run-status" role="status"
+                >時間暫停，你可以先改變世界。</span
+              ><button
+                id="reset"
+                class="icon-button"
+                title="重新開島"
+                aria-label="重新開島"
+              >
+                ↻
               </button>
             </div>
           </div>
-          <div class="artboard-wrap">
-            <span class="axis axis-top"
-              >0&nbsp;&nbsp; · &nbsp;&nbsp; · &nbsp;&nbsp; · &nbsp;&nbsp; ·
-              &nbsp;&nbsp; · &nbsp;&nbsp; · &nbsp;&nbsp;15</span
-            >
-            <div
-              id="artboard"
-              class="artboard show-grid"
-              role="grid"
-              aria-label="16 乘 16 像素畫布，方向鍵選擇像素"
-            ></div>
-            <div id="empty-state" class="empty-state">
-              <span class="empty-icon" aria-hidden="true">▧</span
-              ><strong>讓想像，落在這裡。</strong
-              ><span>寫下描述，或挑一個靈感開始。</span
-              ><small>256 PIXELS WAITING FOR A DECISION</small>
+          <section class="intervention-card">
+            <div class="section-title">
+              <div>
+                <span class="section-number">01</span>
+                <h2>輕輕推一下世界</h2>
+              </div>
+              <span class="muted">一句話，看看會發生什麼。</span>
             </div>
-            <span class="axis axis-bottom"
-              >16 × 16 PIXELS <span id="canvas-mode">COLOR VIEW</span></span
-            >
-          </div>
-          <div class="generation-status" role="status" aria-live="polite">
-            <span id="status-text">畫布準備好了。</span
-            ><span id="progress-text">0 / 256</span>
-          </div>
-          <div class="progress-track"><div id="progress-fill"></div></div>
-          <div id="heat-legend" hidden>
-            <span>低集中度</span><i></i><span>高集中度</span>
-          </div>
-          <div class="canvas-bottom">
-            <span>↖ 點一格，看看 Jev 的選色</span
-            ><button id="download" disabled>↓ 下載 PNG</button>
-          </div>
+            <form id="intervention-form">
+              <label class="sr-only" for="command">輸入世界干預</label
+              ><textarea
+                id="command"
+                rows="2"
+                maxlength="400"
+                placeholder="宣布今晚辦派對，但全島只剩兩份食物。"
+              ></textarea
+              ><button id="send" type="submit" class="primary">
+                改變世界 <span>↗</span>
+              </button>
+            </form>
+            <div class="quick-actions">
+              <button data-command="宣布今晚辦派對，但全島只剩兩份食物。">
+                ♫ 派對 × 糧荒</button
+              ><button data-command="全島開始下雨。">☂ 下場雨</button
+              ><button data-command="全島停電。">ϟ 突然停電</button
+              ><button data-command="在花園放入三把雨傘。">＋ 放入雨傘</button
+              ><button data-command="新島規：禁止囤積食物，鼓勵分享。">
+                ♡ 禁止囤積</button
+              ><button data-command="在花園放入一台備用發電機。">
+                ＋ 發電機
+              </button>
+            </div>
+            <div id="intervention-feedback" class="feedback" role="status">
+              可改變天氣、電力、食物、派對與島規，也能放入物品。自由文字由 Jev
+              解讀。
+            </div>
+            <div id="error" class="error" role="alert" hidden></div>
+          </section>
+          <section class="journal-card">
+            <div class="section-title">
+              <div>
+                <span class="section-number">02</span>
+                <h2>島上正在發生的事</h2>
+              </div>
+              <span id="event-count" class="muted">觀察日誌</span>
+            </div>
+            <div id="journal" class="journal"></div>
+          </section>
         </section>
-        <aside class="inspector">
-          <div class="panel-heading">
-            <span>02</span>
-            <h2>像素顯微鏡</h2>
-          </div>
-          <p class="inspector-intro">每一個色塊背後，都有一組可能性。</p>
-          <div class="pixel-detail">
-            <div id="selected-swatch">?</div>
+        <aside class="inspector" aria-label="島民觀察面板">
+          <div class="section-title">
             <div>
-              <span class="mono" id="selected-coord">X — / Y —</span
-              ><strong id="selected-name">等你選一格</strong
-              ><span id="selected-hex">#------</span>
+              <span class="section-number">08</span>
+              <h2>島民觀察室</h2>
             </div>
+            <button id="back-to-island" class="text-button">回到小島 ↑</button>
           </div>
-          <div class="distribution-title">
-            <span>候選顏色</span><span>機率</span>
-          </div>
-          <div id="probabilities" class="probabilities">
-            <p>作品生成後，點選畫布探索每個像素的候選色。</p>
-          </div>
-          <div class="confidence-stat">
-            <span>選色信心</span><strong id="confidence-value">—</strong>
-          </div>
-          <p class="inspector-note">
-            信心表示選項機率的集中程度，不代表這格一定畫得正確。
-          </p>
-          <div class="run-stats">
-            <div><span>本輪 API 耗時</span><b id="latency">—</b></div>
-            <div><span>本輪輸入 tokens</span><b id="tokens">—</b></div>
-            <div><span>實際模型</span><b id="model">jev-latest</b></div>
-          </div>
-          <details class="raw-detail">
-            <summary>查看 Jev 的構圖 ＋</summary>
-            <pre id="layout-json">// 構圖引導尚未執行</pre>
-          </details>
-          <details class="raw-detail">
-            <summary>查看此像素的 JSON ＋</summary>
-            <pre id="pixel-json">// 等待真實模型回應</pre>
-          </details>
+          <div id="roster" class="roster"></div>
+          <div id="person-detail"></div>
         </aside>
-      </section>
-      <section class="filmstrip">
-        <div class="filmstrip-heading">
-          <div>
-            <span class="mono">THE CONTACT SHEET</span>
-            <h2>每一輪，都值得留下。</h2>
-          </div>
-          <span id="frame-count">尚無作品</span>
-        </div>
-        <div id="frames" class="frames">
-          <div class="empty-frame">
-            <span>＋</span>完成的版本會出現在這裡，可點選比較與下載。
-          </div>
-        </div>
-      </section>
-      <section class="how">
-        <div class="how-intro">
-          <span class="mono">HOW THE MAGIC WORKS</span>
-          <h2>用一連串選擇，<br />畫出一個想像。</h2>
-        </div>
-        <article>
-          <span>01 / IMAGINE</span>
-          <h3>描述你的畫面</h3>
-          <p>物件、位置、背景與色彩，都是 Jev 判斷的線索。</p>
-        </article>
-        <article>
-          <span>02 / DECIDE</span>
-          <h3>每一格，選一個顏色</h3>
-          <p>
-            構圖引導先讓 Jev 選擇幾何形狀與位置，再將 256
-            個像素分四批選色。關閉引導可比較純分類結果。
-          </p>
-        </article>
-        <article>
-          <span>03 / REFINE</span>
-          <h3>看鄰居，再想一次</h3>
-          <p>
-            下一輪讀取前一輪的局部色塊，重新選色。這是分類器創作實驗，並非擴散模型。
-          </p>
-        </article>
-      </section>
+      </div>
       <footer>
-        <span><b>JEV PIXEL LAB</b> Built with curiosity & TypeSafe.</span
-        ><a
-          href="https://github.com/Wizhill05/typesafe-image-diffusion"
-          target="_blank"
-          rel="noreferrer"
-          >Inspired by the community pixel experiment ↗</a
-        >
+        <span>一點點規則，很多種可能。</span
+        ><span>Jev 決定行動 · 世界記住後果</span>
       </footer>
     </main>
+    <dialog id="about-dialog">
+      <button class="dialog-close icon-button" aria-label="關閉說明">×</button>
+      <div class="eyebrow">A WORLD WITH CONSEQUENCES</div>
+      <h2>小世界怎麼運作？</h2>
+      <p>
+        每回合是一小時。8 位島民根據個性、需求、公告與最近 6 則記憶，由 Jev
+        各自選擇下一個行動。
+      </p>
+      <p>
+        所有人看到同一份回合開始時的島況。行動依輪替順序結算，所以想吃飯的人，也可能遇到「食物剛被拿完」。果樹每三回合最多補充
+        4 份果實。
+      </p>
+      <p>
+        你看到的機率是 Jev
+        對當時可用行動的評估；日誌是程式記錄的實際結果，不是模型生成的內心獨白。
+      </p>
+      <p>
+        自動觀察每次完成後等候 12 秒，最多連續 12
+        回合；關閉分頁會暫停。干預在下一回合前套用，支援有限的物品與資源效果；自訂島規會直接提供給角色理解。
+      </p>
+      <p>進度只儲存在這個瀏覽器。API 金鑰保存在伺服器端。</p>
+      <a
+        href="https://docs.typesafe.ai/primitives/choice"
+        target="_blank"
+        rel="noreferrer"
+        >了解 Jev 的 Choice 決策 ↗</a
+      >
+    </dialog>
+    <dialog id="reset-dialog">
+      <h2>重新開始這座小島？</h2>
+      <p>目前島民的記憶、日誌與進度會清除，回到第一天。</p>
+      <div class="dialog-actions">
+        <button id="cancel-reset" class="secondary">繼續觀察</button
+        ><button id="confirm-reset" class="primary">重新開島</button>
+      </div>
+    </dialog>
+    <script type="module" src="/app.js"></script>
   </body>
 </html>

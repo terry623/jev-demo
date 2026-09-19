@@ -1,54 +1,38 @@
-# Jev Pixel Lab
+# Jev 小世界 · 微光島
 
-繁體中文像素創作實驗室，部署於 Cloudflare Workers。舊版 Decision Lab、客服分流／內容審核／購買意圖 UI 與 `/api/evaluate` 均已移除。
-
-## 創作流程
-
-1. 輸入描述，選擇三組 16 色調色盤之一。
-2. 預設啟用「構圖引導」：Jev 先回答 65 個 Choice 問題，選擇背景、一般幾何圖層的形狀、顏色、位置、尺寸與相對連接關係。程式計算各像素與這些形狀的交集，提供給後續判斷。沒有硬編碼的物件圖樣或預繪素材。
-3. 四個並行 API 請求，各詢問 64 個像素的顏色，合計 256 次 Choice 判斷。NDJSON 串流在每批真實模型結果抵達時更新畫布。
-4. 可追加 0–3 輪自動修正，或修改描述後手動追加一輪。修正會提供每格上一輪的顏色與 3×3 鄰域。
-5. 點選像素查看前五名候選色、全部 16 色的原始機率與信心。可切換信心熱圖、格線、版本快照，下載 1024×1024 PNG（16×16 最近鄰放大）。
-
-「構圖引導」可以關閉，以比較純逐像素分類。直接讓像素各自想像，容易產生色塊或缺少細節；幾何引導能改善簡單物件，但不是通用擴散模型，也不保證複雜場景的品質。信心代表候選分布集中度，不是畫作正確率。
-
-所有色彩結果都使用實際 Jev API；未完成的一輪不會保存成作品。停止或失敗會保留已完成版本。快照僅保留在目前分頁記憶體，關閉或重新整理即消失。
+八位不同個性的居民生活在一座可干預的小島。文字公告、天氣、停電、共享食物、物品和島規會影響下一輪 Jev 決策。
 
 ## 技術
 
-- 原生 HTML / CSS / JavaScript ES modules，CSS Grid 像素畫布，Canvas PNG 匯出。
-- Cloudflare Workers + Static Assets。
-- TypeSafe HTTP API `jev-latest`，伺服器固定題目與調色盤；金鑰存在 Cloudflare Secret。
-- 每 IP 每分鐘 12 個生成輪次的 Cloudflare rate-limit binding。限制依 Cloudflare 位置計算，是近似流量保護，不是全域費用上限；引導輪次包含 5 個 upstream requests，純像素輪次包含 4 個。
-- 每次請求最多 600 字描述、16×16 合法顏色索引、12 KB body，並有逾時與串流取消處理。模型暫時忙碌時最多重試一次。
-- 本站不把描述寫入資料庫；描述送到 TypeSafe 進行推論。不要在描述輸入敏感資訊。
+原生 HTML / CSS / JavaScript、SVG 小島、Cloudflare Workers + Static Assets。伺服器透過 TypeSafe System One HTTP API 使用 `jev-latest`，金鑰僅存在 Worker secret / 本機 `.dev.vars`。
 
-## 本機執行
+- `public/world.js`：固定人物、世界狀態、需求、資源與行動結算。
+- `src/decisions.js`：批次 Choice 問題與完整機率驗證。
+- `src/worker.js`：輸入驗證、來源檢查、速率限制、逾時與 API 路由。
+- `public/app.js`：觀察控制、SVG 角色、角色面板、本機儲存。
+
+每回合 8 個行動 Choice，加上 8 個社交對象 Choice，在同一份狀態上批次推論。社交對象只在分享／求助時使用。程式依輪替優先順序結算競爭，同時保留模型意圖和實際結果。記憶保留最近 6 則，世界日誌最近 70 則。沒有假造模型推論或背景離線模擬。
+
+自然語言干預會解析天氣、電力、食物、派對、島規與物品 6 個維度。支援兩份／歸零／增加 8 份食物、食物箱（4份）、雨傘（3把）、發電機、音箱與神祕物件；未支援的物理效果不會自動生成新程式，公告仍提供角色理解。相同類型的物品使用固定名稱。果樹每 3 回合補充最多 4 份。自動模式每次完成後等待 12 秒，最多連跑 12 回合，隱藏分頁即暫停。
+
+世界由瀏覽器保存；此為可修改本機狀態的單人沙盒，並非防作弊的多人伺服器。API 不存取私人資源。Choice 機率代表可用行動的相對傾向，並非客觀真實心理。
+
+## 開發與測試
 
 ```sh
-npm ci
-# 建立被 Git 忽略的 .dev.vars，設定 TYPESAFE_API_KEY
+npm install
+# 將 TYPESAFE_API_KEY 設定於忽略的 .dev.vars；勿放進 public/
 npm run dev
 npm run check
 npm test
 ```
 
-## 發布
+## 部署
 
-依專案要求先 `git add -A`、commit、push，再使用官方 Wrangler。
+使用 Cloudflare 官方 Wrangler。先 `git add -A`、commit、push 目前分支，成功後才執行 `npm run deploy`。已有 `TYPESAFE_API_KEY` Worker secret 與每分鐘 12 次的 IP rate limiter。
 
-```sh
-# 第一次設定，或更新 API key 時
-npx wrangler secret put TYPESAFE_API_KEY
-npm run deploy
-```
+部署網址：https://jev-decision-lab.terry9251623.workers.dev
 
-保留 Worker 名稱 `jev-decision-lab` 以沿用原公開網址及已設定的 secret；站內內容已完整替換為 Pixel Lab。
+舊 Pixel Lab 與 `/api/pixels` 已移除（404）。
 
-## 參考與致謝
-
-概念參考 [Wizhill05/typesafe-image-diffusion](https://github.com/Wizhill05/typesafe-image-diffusion)。本專案自行實作 Cloudflare 代理、串流、介面、通用幾何構圖引導及測試。
-
-- [TypeSafe API](https://docs.typesafe.ai/api.md)
-- [TypeSafe Models and limits](https://docs.typesafe.ai/models.md)
-- [Cloudflare rate limits](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)
+官方文件：[HTTP API](https://docs.typesafe.ai/api)、[Choice](https://docs.typesafe.ai/primitives/choice)、[Function calling](https://docs.typesafe.ai/cookbooks/function_calling)。

@@ -1,13 +1,13 @@
 {
-  "name": "jev-pixel-lab",
-  "version": "2.0.0",
+  "name": "jev-little-world",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "node --test",
-    "check": "node --check src/worker.js && node --check src/pixels.js && node --check src/composition.js && node --check public/app.js"
+    "check": "node --check src/worker.js && node --check src/decisions.js && node --check public/world.js && node --check public/app.js"
   },
   "devDependencies": {
     "wrangler": "4.135.0"

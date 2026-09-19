@@ -1,265 +1,284 @@
-import { test } from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import worker from "../src/worker.js";
-import { buildRequest, parsePixels, validateInput } from "../src/pixels.js";
-import { palettes } from "../public/palette.js";
-
-const valid = {
-  prompt: "A red apple on a white background",
-  palette: "classic",
-  guided: false,
-};
-const request = (body, headers = {}, path = "/api/pixels") =>
-  new Request(`https://demo.test${path}`, {
-    method: "POST",
-    headers,
-    body: typeof body === "string" ? body : JSON.stringify(body),
-  });
-const env = {
-  TYPESAFE_API_KEY: "test",
-  RATE_LIMITER: { limit: async () => ({ success: true }) },
-};
-const responseFor = (payload) => ({
-  model: "jev-test",
-  usage: { input_tokens: 100, output_tokens: 20 },
-  answers: Object.fromEntries(
-    Object.keys(payload.questions).map((id) => [
-      id,
+import {
+  createWorld,
+  validateWorld,
+  availableActions,
+  resolveTurn,
+  applyIntervention,
+  PEOPLE,
+} from "../public/world.js";
+import {
+  buildDecisions,
+  parseDecisions,
+  buildIntervention,
+  parseIntervention,
+  INTERVENTIONS,
+} from "../src/decisions.js";
+const targets = (id) => PEOPLE.find((p) => p.id !== id).id;
+function choices(w, actions = {}) {
+  return Object.fromEntries(
+    w.people.map((p) => [
+      p.id,
       {
-        type: "choice",
-        choice: "red",
-        confidence: 0.9,
-        probabilities: Object.fromEntries(
-          palettes.classic.colors.map(([key]) => [
-            key,
-            key === "red" ? 0.9 : key === "white" ? 0.1 : 0,
-          ]),
-        ),
+        action: actions[p.id] || "rest",
+        target: targets(p.id),
+        confidence: 1,
+        probabilities: { [actions[p.id] || "rest"]: 1 },
       },
     ]),
-  ),
-});
-
-test("pixel requests cover each coordinate exactly once and constrain output to palette", () => {
-  const batches = [0, 64, 128, 192].map((offset) =>
-    buildRequest(valid, offset),
   );
-  const keys = batches.flatMap((batch) => Object.keys(batch.questions));
-  assert.equal(keys.length, 256);
-  assert.equal(new Set(keys).size, 256);
-  assert.match(batches[3].questions.p255.instructions, /row 15, column 15/);
-  assert.equal(Object.keys(batches[0].questions.p0.criteria).length, 16);
-  assert.equal(batches[0].state.artwork_description, valid.prompt);
+}
+function mockAnswer(criteria, choice = Object.keys(criteria)[0]) {
+  return {
+    type: "choice",
+    choice,
+    confidence: 1,
+    probabilities: Object.fromEntries(
+      Object.keys(criteria).map((k) => [k, k === choice ? 1 : 0]),
+    ),
+  };
+}
+function intervention(overrides) {
+  return {
+    ...Object.fromEntries(
+      Object.entries(INTERVENTIONS).map(([k, c]) => [k, Object.keys(c)[0]]),
+    ),
+    ...overrides,
+  };
+}
+test("world validation rejects malformed identities, resources and memory", () => {
+  const w = createWorld();
+  assert.ok(validateWorld(w));
+  w.people[0].food = -1;
+  assert.equal(validateWorld(w), false);
+  w.people[0].food = 0;
+  w.people[1].id = "momo";
+  assert.equal(validateWorld(w), false);
+  assert.equal(validateWorld(null), false);
 });
-
-test("refinement provides only bounded local neighbors and rejects invalid grids", () => {
-  const previous = Array(256).fill(0);
-  previous[0] = 8;
-  const payload = buildRequest({ ...valid, previous }, 0);
-  assert.match(payload.questions.p0.instructions, /Previous color: red/);
-  assert.match(payload.questions.p0.instructions, /outside,outside,outside/);
-  assert.match(payload.questions.p0.instructions, /outside,red,black/);
-  for (const grid of [
-    [],
-    Array(256).fill(-1),
-    Array(256).fill("red"),
-    Array(256).fill(null),
-  ])
-    assert.ok(validateInput({ ...valid, previous: grid }));
-  assert.equal(validateInput({ ...valid, previous }), null);
-});
-
-test("API validates body, rejects legacy endpoint and enforces boundaries", async () => {
-  for (const body of [
-    "{",
-    null,
-    { ...valid, prompt: " " },
-    { ...valid, prompt: "x".repeat(601) },
-    { ...valid, palette: "constructor" },
-  ])
-    assert.equal((await worker.fetch(request(body), env)).status, 400);
+test("party scarcity removes all hidden food and broadcasts a shared memory", () => {
+  const w = createWorld();
+  w.objects = [{ type: "food", name: "補給", charges: 4 }];
+  const { world, effects } = applyIntervention(
+    w,
+    "今晚派對，只剩兩份食物",
+    intervention({ food: "two", party: "on" }),
+  );
+  assert.equal(world.sharedFood, 2);
+  assert.equal(world.forestFood, 0);
   assert.equal(
-    (await worker.fetch(request("x".repeat(12001)), env)).status,
-    413,
+    world.people.reduce((a, p) => a + p.food, 0),
+    0,
+  );
+  assert.equal(world.objects[0].charges, 0);
+  assert.ok(world.party);
+  assert.ok(effects.length === 2);
+  assert.ok(world.people.every((p) => p.memory.length === 1));
+  assert.equal(w.sharedFood, 8);
+});
+test("simultaneous hungry residents compete without creating negative food; priority rotates", () => {
+  let w = createWorld();
+  w.people.forEach((p) => (p.food = 0));
+  w.sharedFood = 2;
+  const a = Object.fromEntries(w.people.map((p) => [p.id, "eat"]));
+  const result = resolveTurn(w, choices(w, a));
+  assert.equal(result.sharedFood, 0);
+  assert.equal(
+    result.people.filter((p) => p.last.result.includes("吃下一份")).length,
+    2,
   );
   assert.equal(
-    (await worker.fetch(request(valid, {}, "/api/evaluate"), env)).status,
+    result.people.filter((p) => p.last.result.includes("已被拿完")).length,
+    6,
+  );
+  assert.equal(result.people[0].hunger, 11);
+  w.tick = 1;
+  const next = resolveTurn(w, choices(w, a));
+  assert.match(next.people[0].last.result, /已被拿完/);
+  assert.match(next.people[2].last.result, /吃下一份/);
+  assert.ok(validateWorld(result));
+});
+test("sharing consumes one food and creates a target memory; asking does not steal food", () => {
+  const w = createWorld();
+  const d = choices(w, { sea: "share", sun: "ask" });
+  d.sea.target = "bean";
+  d.sun.target = "wood";
+  const result = resolveTurn(w, d);
+  assert.equal(result.people[3].food, 1);
+  assert.equal(result.people[2].hunger, w.people[2].hunger - 35 + 7);
+  assert.ok(result.people[2].memory.some((m) => m.text.includes("海海")));
+  assert.ok(result.people[1].memory.some((m) => m.text.includes("小晴")));
+  assert.equal(result.sharedFood, w.sharedFood);
+});
+test("two repairs restore power; engineer repairs in one action", () => {
+  const w = createWorld();
+  w.power = false;
+  assert.equal(resolveTurn(w, choices(w, { wood: "repair" })).power, false);
+  assert.equal(
+    resolveTurn(w, choices(w, { wood: "repair", sun: "repair" })).power,
+    true,
+  );
+  assert.equal(resolveTurn(w, choices(w, { spark: "repair" })).power, true);
+});
+test("rain costs energy and shelter works; forest regenerates every three turns", () => {
+  const w = createWorld();
+  w.weather = "rain";
+  w.tick = 2;
+  const out = resolveTurn(w, choices(w, { wood: "forage" }));
+  assert.equal(out.people[1].energy, w.people[1].energy - 20);
+  assert.equal(out.forestFood, w.forestFood - 1 + 4);
+  assert.equal(out.people[5].energy, 74);
+  assert.equal(w.people[1].energy, 85);
+});
+test("rules exclude forbidden actions and model probabilities must be complete", () => {
+  const w = createWorld();
+  w.policy = "nohoard";
+  assert.ok(!availableActions(w, w.people[0]).includes("hoard"));
+  const payload = buildDecisions(w);
+  const data = {
+    answers: Object.fromEntries(
+      Object.entries(payload.questions).map(([k, q]) => [
+        k,
+        mockAnswer(q.criteria),
+      ]),
+    ),
+  };
+  assert.equal(Object.keys(parseDecisions(data, payload)).length, 8);
+  delete data.answers.momo.probabilities.rest;
+  assert.throws(() => parseDecisions(data, payload), /invalid_response/);
+});
+test("objects provide bounded consumable effects and memories stay bounded", () => {
+  let w = createWorld();
+  w.power = false;
+  w.objects = [{ type: "generator", name: "備用發電機", charges: 1 }];
+  w = resolveTurn(w, choices(w, { pepper: "explore" }));
+  assert.ok(w.power);
+  assert.equal(w.objects[0].charges, 0);
+  for (let i = 0; i < 10; i++) w = resolveTurn(w, choices(w));
+  assert.ok(w.people.every((p) => p.memory.length <= 6));
+  assert.ok(w.events.length <= 70);
+  assert.ok(validateWorld(w));
+});
+test("API rejects old routes, bad state and cross-origin calls before inference", async () => {
+  const env = { TYPESAFE_API_KEY: "test" };
+  assert.equal(
+    (
+      await worker.fetch(
+        new Request("https://test/api/pixels", { method: "POST" }),
+        env,
+      )
+    ).status,
     404,
   );
   assert.equal(
-    (await worker.fetch(request(valid, { Origin: "https://other.test" }), env))
-      .status,
-    403,
+    (
+      await worker.fetch(
+        new Request("https://test/api/step", { method: "GET" }),
+        env,
+      )
+    ).status,
+    405,
   );
-  assert.equal((await worker.fetch(request(valid), {})).status, 503);
   assert.equal(
     (
-      await worker.fetch(request(valid), {
-        ...env,
-        RATE_LIMITER: { limit: async () => ({ success: false }) },
-      })
+      await worker.fetch(
+        new Request("https://test/api/step", {
+          method: "POST",
+          headers: { Origin: "https://evil.test" },
+        }),
+        env,
+      )
     ).status,
-    429,
+    403,
+  );
+  assert.equal(
+    (
+      await worker.fetch(
+        new Request("https://test/api/step", { method: "POST", body: "{}" }),
+        env,
+      )
+    ).status,
+    400,
   );
 });
-
-test("stream carries all real answers and aggregated usage without credentials", async () => {
+test("API composes real shaped provider answers into world outcomes", async () => {
   const original = globalThis.fetch;
-  const calls = [];
-  globalThis.fetch = async (url, init) => {
-    assert.equal(url, "https://api.typesafe.ai/v1/systemone");
-    assert.equal(init.headers.Authorization, "Bearer test");
-    const payload = JSON.parse(init.body);
-    calls.push(payload);
-    return Response.json(responseFor(payload));
+  globalThis.fetch = async (_, opts) => {
+    const payload = JSON.parse(opts.body);
+    return Response.json({
+      model: "jev-test",
+      answers: Object.fromEntries(
+        Object.entries(payload.questions).map(([k, q]) => [
+          k,
+          mockAnswer(
+            q.criteria,
+            Object.hasOwn(q.criteria, "rest") ? "rest" : undefined,
+          ),
+        ]),
+      ),
+    });
   };
   try {
     const response = await worker.fetch(
-      request({ ...valid, questions: { evil: true } }),
-      env,
+      new Request("https://test/api/step", {
+        method: "POST",
+        body: JSON.stringify({ world: createWorld() }),
+      }),
+      { TYPESAFE_API_KEY: "server-only" },
     );
     assert.equal(response.status, 200);
-    const raw = await response.text();
-    const events = raw.trim().split("\n").map(JSON.parse);
-    assert.equal(calls.length, 4);
-    assert.equal(events[0].type, "start");
-    const pixels = events
-      .filter((e) => e.type === "pixels")
-      .flatMap((e) => e.pixels);
-    assert.equal(pixels.length, 256);
-    assert.equal(new Set(pixels.map((p) => p.index)).size, 256);
-    assert.ok(pixels.every((p) => p.color === 8 && p.probabilities[8] === 0.9));
-    assert.equal(events.at(-1).type, "done");
-    assert.deepEqual(events.at(-1).usage, {
-      input_tokens: 400,
-      output_tokens: 80,
+    const data = await response.json();
+    assert.equal(data.world.tick, 1);
+    assert.ok(data.world.people.every((p) => p.last.action === "rest"));
+    assert.equal(JSON.stringify(data).includes("server-only"), false);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+test("interventions use independent preserved dimensions and reject missing responses", () => {
+  const payload = buildIntervention(createWorld(), "下雨");
+  assert.equal(Object.keys(payload.questions).length, 6);
+  const data = {
+    answers: Object.fromEntries(
+      Object.entries(INTERVENTIONS).map(([k, c]) => [k, mockAnswer(c)]),
+    ),
+  };
+  assert.equal(parseIntervention(data).weather, "keep");
+  delete data.answers.food;
+  assert.throws(() => parseIntervention(data), /invalid_response/);
+});
+
+test("maximum-length announcements remain valid and quiet policy removes noisy party", () => {
+  const { world } = applyIntervention(
+    createWorld(),
+    "島".repeat(400),
+    intervention({ policy: "custom" }),
+  );
+  assert.ok(validateWorld(world));
+  world.party = true;
+  world.policy = "quiet";
+  assert.ok(!availableActions(world, world.people[0]).includes("party"));
+  assert.ok(availableActions(world, world.people[0]).includes("chat"));
+});
+test("rate limiting and upstream failures do not produce a changed world", async () => {
+  const req = () =>
+    new Request("https://test/api/step", {
+      method: "POST",
+      body: JSON.stringify({ world: createWorld() }),
     });
-    assert.ok(!raw.includes("Bearer"));
-    assert.ok(calls.every((p) => !p.questions.evil));
-  } finally {
-    globalThis.fetch = original;
-  }
-});
-
-test("partial or malformed model output cannot become a finished image", async () => {
-  const payload = buildRequest(valid, 0);
-  const data = responseFor(payload);
-  data.answers.p0.probabilities.red = 5;
-  assert.throws(() => parsePixels(data, "classic", 0));
-  const original = globalThis.fetch;
-  globalThis.fetch = async () =>
-    new Response("private upstream diagnostic", { status: 401 });
-  try {
-    const raw = await (await worker.fetch(request(valid), env)).text();
-    const events = raw.trim().split("\n").map(JSON.parse);
-    assert.ok(events.some((e) => e.type === "error"));
-    assert.ok(!events.some((e) => e.type === "done"));
-    assert.ok(!raw.includes("private upstream"));
-  } finally {
-    globalThis.fetch = original;
-  }
-});
-
-test("guided geometry keeps parent-relative details connected", async () => {
-  const { buildCompositionRequest, parseComposition, layersAt } = await import(
-    "../src/composition.js"
-  );
-  const payload = buildCompositionRequest(valid);
-  assert.equal(Object.keys(payload.questions).length, 65);
-  const answers = { background: { choice: "white" } };
-  for (const role of [
-    "ground",
-    "main",
-    "upper",
-    "accent",
-    "left",
-    "right",
-    "lower",
-    "extra",
-  ])
-    answers[role + "_shape"] = { choice: "none" };
-  const set = (id, values) => {
-    for (const [key, value] of Object.entries(values))
-      answers[id + "_" + key] = { choice: String(value) };
-  };
-  set("main", {
-    shape: "ellipse",
-    color: "red",
-    x: 8,
-    y: 10,
-    w: 10,
-    h: 10,
-    parent: "canvas",
-    anchor: "inside_center",
+  const limited = await worker.fetch(req(), {
+    TYPESAFE_API_KEY: "test",
+    RATE_LIMITER: { limit: async () => ({ success: false }) },
   });
-  set("upper", {
-    shape: "rectangle",
-    color: "brown",
-    x: 8,
-    y: 2,
-    w: 2,
-    h: 2,
-    parent: "main",
-    anchor: "above",
-  });
-  const layout = parseComposition({ answers }, "classic");
-  assert.equal(layout.layers[1].y, 4);
-  assert.equal(
-    layout.layers[1].y + layout.layers[1].h / 2,
-    layout.layers[0].y - layout.layers[0].h / 2,
-  );
-  assert.equal(layersAt(layout, 7, 3).at(-1).id, "upper");
-  assert.match(
-    buildRequest(valid, 0, 64, layout).questions.p55.instructions,
-    /intended fill brown/,
-  );
-  answers.upper_parent.choice = "upper";
-  assert.throws(() => parseComposition({ answers }, "classic"));
-});
-
-test("guided stream obtains composition before sending pixel batches", async () => {
+  assert.equal(limited.status, 429);
   const original = globalThis.fetch;
-  let calls = 0;
-  globalThis.fetch = async (_url, init) => {
-    calls++;
-    const payload = JSON.parse(init.body);
-    if (payload.questions.background) {
-      const answers = { background: { choice: "white" } };
-      for (const role of [
-        "ground",
-        "main",
-        "upper",
-        "accent",
-        "left",
-        "right",
-        "lower",
-        "extra",
-      ])
-        answers[role + "_shape"] = { choice: "none" };
-      return Response.json({
-        answers,
-        model: "jev-test",
-        usage: { input_tokens: 50, output_tokens: 10 },
-      });
-    }
-    return Response.json(responseFor(payload));
-  };
+  globalThis.fetch = async () => new Response("busy", { status: 529 });
   try {
-    const events = (
-      await (
-        await worker.fetch(request({ ...valid, guided: true }), env)
-      ).text()
-    )
-      .trim()
-      .split("\n")
-      .map(JSON.parse);
-    assert.equal(calls, 5);
-    assert.ok(
-      events.findIndex((e) => e.type === "composition") <
-        events.findIndex((e) => e.type === "pixels"),
-    );
-    assert.equal(events.at(-1).usage.input_tokens, 450);
-    assert.equal(events.at(-1).layout.background, "white");
+    const response = await worker.fetch(req(), { TYPESAFE_API_KEY: "test" });
+    assert.equal(response.status, 502);
+    assert.equal((await response.json()).world, undefined);
   } finally {
     globalThis.fetch = original;
   }
