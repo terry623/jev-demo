@@ -1,7 +1,252 @@
 <!doctype html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f6f7fb"><meta name="description" content="親手探索 Jev 的分類、條件判斷與程度評分。一次輸入，三種結構化決策。"><title>Jev — Decision Lab</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' rx='22' fill='%235447ef'/%3E%3Ctext x='23' y='57' fill='white' font-size='55' font-family='sans-serif'%3Ej%3C/text%3E%3C/svg%3E"><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
-<body><header><a class="brand" href="/" aria-label="Jev 首頁"><span class="logo">j<span>✳</span></span><strong>jev</strong><span class="divider"></span><span class="lab">Decision Lab</span></a><a class="docs" href="https://docs.typesafe.ai/" target="_blank" rel="noreferrer">TypeSafe 文件 ↗</a></header>
-<main><section class="hero"><div><div class="eyebrow"><span class="dot"></span> POWERED BY TYPESAFE · SYSTEM ONE</div><h1>讓語言，<br>成為<span>可執行的判斷。</span></h1><p>把一段訊息交給 Jev，看它如何理解意圖、評估訊號，<br class="desktop">回傳程式能直接使用的結構化答案。</p><div class="hero-tags"><span>↗ Choice</span><span>◈ Noul</span><span>▥ Score</span></div></div><div class="diagram" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="input-node">自然語言 <span>→</span></div><div class="jev-node">jev<span>decision engine</span></div><div class="output-node o1"><i>↗</i> Choice <b>enum</b></div><div class="output-node o2"><i>◈</i> Noul <b>0 → 1</b></div><div class="output-node o3"><i>▥</i> Score <b>number</b></div><span class="diagram-note">ONE INPUT. THREE TYPED ANSWERS.</span></div></section>
-<section class="workspace"><div class="workspace-heading"><div><span class="section-index">01 /</span><h2>試試看，讓 Jev 做判斷</h2></div><span class="model-pill"><span class="dot"></span> jev-latest</span></div><div id="tabs" class="tabs" role="tablist" aria-label="展示情境"></div><div class="work-grid"><section class="input-panel"><div class="panel-label"><span>INPUT</span><span id="scenario-eyebrow"></span></div><h3>從一段訊息開始</h3><p id="description"></p><label for="message">待分析的訊息</label><textarea id="message" maxlength="2000" spellcheck="false"></textarea><div class="input-meta"><span>支援繁體中文與英文</span><span id="counter"></span></div><div class="samples-label">沒有靈感？試用範例</div><div id="samples" class="samples"></div><button id="run" class="run">開始分析 <span>↗</span></button><p class="privacy">訊息將傳送至 TypeSafe 進行分析，請勿輸入敏感資料。</p><p id="error" class="error" role="alert" hidden></p></section><section class="result-panel" aria-live="polite" aria-busy="false"><div class="panel-label"><span>OUTPUT</span><span id="result-status">等待你的第一個判斷</span></div><div id="results"></div><div id="metrics" class="metrics" hidden></div></section></div></section>
-<section class="explain"><div><span class="section-index">02 / THE PRIMITIVES</span><h2>小小的判斷，組合出更多可能。</h2><p>同一份輸入，一次詢問三個獨立問題。</p></div><article><span class="primitive-icon">↗</span><h3>Choice <small>選一個答案</small></h3><p>在預先定義的選項中分類，保留每個選項的機率與信心指標。</p></article><article><span class="primitive-icon">◈</span><h3>Noul <small>判斷是否成立</small></h3><p>回傳「是」的機率。接近 50% 代表不確定，不代表程度中等。</p></article><article><span class="primitive-icon">▥</span><h3>Score <small>評估程度</small></h3><p>依具體描述的等級評分，以機率加權，答案可以介於兩級之間。</p></article></section>
-<details class="inspector"><summary><span>⌘ 開發者視角</span><span>查看 request / response JSON ＋</span></summary><div class="code-grid"><div><h4>REQUEST</h4><pre id="request-json"></pre></div><div><h4>RESPONSE</h4><pre id="response-json">// 執行分析後顯示實際 API 回應</pre></div></div></details><footer><span><b>jev</b> Decision Lab <span class="footer-divider">/</span> Built with TypeSafe</span><span>Typed answers. Programmable intelligence.</span></footer></main></body></html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#eeeae2" />
+    <meta
+      name="description"
+      content="用 Jev 的 256 個選色判斷創作像素畫。觀看每一輪變化、探索每個像素的機率，下載你的作品。"
+    />
+    <title>Jev Pixel Lab — 像素實驗室</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23e75b32' d='M4 4h24v24H4z'/%3E%3Cpath fill='%23fff2db' d='M10 9h12v4H10zm0 4h4v10h-4zm4 0h8v4h-8z'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a href="/" class="brand"
+        ><span class="brand-icon" aria-hidden="true">▟</span
+        ><strong>JEV<span>PIXEL LAB</span></strong
+        ><span class="edition">EXPERIMENT № 01</span></a
+      >
+      <a
+        href="https://docs.typesafe.ai/"
+        target="_blank"
+        rel="noreferrer"
+        class="docs"
+        >ABOUT JEV ↗</a
+      >
+    </header>
+    <main>
+      <section class="intro">
+        <div>
+          <div class="kicker">
+            <span></span> A LITTLE EXPERIMENT IN MACHINE IMAGINATION
+          </div>
+          <h1>每一格，<span>都是一個決定。</span></h1>
+          <p>給 Jev 一個想像，看 256 次選色判斷，拼出你的像素世界。</p>
+        </div>
+        <div class="intro-stamp">
+          <strong>16 × 16</strong
+          ><span>SMALL CANVAS.<br />CURIOUS MACHINE.</span
+          ><i aria-hidden="true">✳</i>
+        </div>
+      </section>
+      <section class="studio" aria-label="像素創作工作室">
+        <aside class="controls">
+          <div class="panel-heading">
+            <span>01</span>
+            <h2>你的想像</h2>
+            <span class="mono">THE PROMPT</span>
+          </div>
+          <label for="prompt">想畫些什麼？</label>
+          <textarea
+            id="prompt"
+            maxlength="600"
+            placeholder="一顆紅蘋果、一隻太空貓，或午夜的山景…"
+          ></textarea>
+          <div class="field-note">
+            <span>小畫布適合簡單形狀與明確位置</span
+            ><span id="char-count">0/600</span>
+          </div>
+          <div class="examples" id="examples" aria-label="靈感範例"></div>
+          <div class="control-label">
+            <label for="palette">調色盤</label
+            ><span class="mono">16 COLORS</span>
+          </div>
+          <select id="palette"></select>
+          <div
+            id="palette-swatches"
+            class="palette-swatches"
+            aria-label="調色盤色彩"
+          ></div>
+          <div class="control-label">
+            <label for="rounds">自動修正</label
+            ><output id="round-label" for="rounds">1 輪</output>
+          </div>
+          <input id="rounds" type="range" min="0" max="3" value="1" step="1" />
+          <div class="range-labels">
+            <span>只畫一輪</span><span>最多修正 3 輪</span>
+          </div>
+          <label class="guided-label"
+            ><input id="guided" type="checkbox" checked /> 構圖引導
+            <span>建議開啟</span></label
+          >
+          <p class="guided-note">
+            先由 Jev 選擇形狀與位置，再逐格選色。關閉可試純像素判斷。
+          </p>
+          <p class="hint">
+            修正會參考鄰近像素重新選色，可以比較每一輪，挑你最喜歡的版本。
+          </p>
+          <button id="generate" class="primary">
+            <span>✳</span> 讓 Jev 畫畫 <span>↗</span>
+          </button>
+          <button id="stop" class="stop" hidden>■ 停止生成</button>
+          <button id="refine" class="secondary" disabled>
+            ↻ 用目前描述再修一輪
+          </button>
+          <p class="privacy">
+            描述會傳送至 TypeSafe。每輪 256
+            個選色判斷，另含構圖問題；複雜場景不一定能完整呈現。
+          </p>
+          <p id="error" role="alert" hidden></p>
+        </aside>
+        <section class="canvas-panel">
+          <div class="canvas-toolbar">
+            <div class="canvas-title">
+              <span class="status-dot" id="status-dot"></span
+              ><span id="canvas-title">UNTITLED / 尚未生成</span>
+            </div>
+            <div class="view-tools">
+              <button id="grid-toggle" title="顯示像素格線" aria-pressed="true">
+                ▦ <span>格線</span></button
+              ><button
+                id="heat-toggle"
+                title="檢視各像素的選色信心"
+                aria-pressed="false"
+              >
+                ◐ <span>信心</span>
+              </button>
+            </div>
+          </div>
+          <div class="artboard-wrap">
+            <span class="axis axis-top"
+              >0&nbsp;&nbsp; · &nbsp;&nbsp; · &nbsp;&nbsp; · &nbsp;&nbsp; ·
+              &nbsp;&nbsp; · &nbsp;&nbsp; · &nbsp;&nbsp;15</span
+            >
+            <div
+              id="artboard"
+              class="artboard show-grid"
+              role="grid"
+              aria-label="16 乘 16 像素畫布，方向鍵選擇像素"
+            ></div>
+            <div id="empty-state" class="empty-state">
+              <span class="empty-icon" aria-hidden="true">▧</span
+              ><strong>讓想像，落在這裡。</strong
+              ><span>寫下描述，或挑一個靈感開始。</span
+              ><small>256 PIXELS WAITING FOR A DECISION</small>
+            </div>
+            <span class="axis axis-bottom"
+              >16 × 16 PIXELS <span id="canvas-mode">COLOR VIEW</span></span
+            >
+          </div>
+          <div class="generation-status" role="status" aria-live="polite">
+            <span id="status-text">畫布準備好了。</span
+            ><span id="progress-text">0 / 256</span>
+          </div>
+          <div class="progress-track"><div id="progress-fill"></div></div>
+          <div id="heat-legend" hidden>
+            <span>低集中度</span><i></i><span>高集中度</span>
+          </div>
+          <div class="canvas-bottom">
+            <span>↖ 點一格，看看 Jev 的選色</span
+            ><button id="download" disabled>↓ 下載 PNG</button>
+          </div>
+        </section>
+        <aside class="inspector">
+          <div class="panel-heading">
+            <span>02</span>
+            <h2>像素顯微鏡</h2>
+          </div>
+          <p class="inspector-intro">每一個色塊背後，都有一組可能性。</p>
+          <div class="pixel-detail">
+            <div id="selected-swatch">?</div>
+            <div>
+              <span class="mono" id="selected-coord">X — / Y —</span
+              ><strong id="selected-name">等你選一格</strong
+              ><span id="selected-hex">#------</span>
+            </div>
+          </div>
+          <div class="distribution-title">
+            <span>候選顏色</span><span>機率</span>
+          </div>
+          <div id="probabilities" class="probabilities">
+            <p>作品生成後，點選畫布探索每個像素的候選色。</p>
+          </div>
+          <div class="confidence-stat">
+            <span>選色信心</span><strong id="confidence-value">—</strong>
+          </div>
+          <p class="inspector-note">
+            信心表示選項機率的集中程度，不代表這格一定畫得正確。
+          </p>
+          <div class="run-stats">
+            <div><span>本輪 API 耗時</span><b id="latency">—</b></div>
+            <div><span>本輪輸入 tokens</span><b id="tokens">—</b></div>
+            <div><span>實際模型</span><b id="model">jev-latest</b></div>
+          </div>
+          <details class="raw-detail">
+            <summary>查看 Jev 的構圖 ＋</summary>
+            <pre id="layout-json">// 構圖引導尚未執行</pre>
+          </details>
+          <details class="raw-detail">
+            <summary>查看此像素的 JSON ＋</summary>
+            <pre id="pixel-json">// 等待真實模型回應</pre>
+          </details>
+        </aside>
+      </section>
+      <section class="filmstrip">
+        <div class="filmstrip-heading">
+          <div>
+            <span class="mono">THE CONTACT SHEET</span>
+            <h2>每一輪，都值得留下。</h2>
+          </div>
+          <span id="frame-count">尚無作品</span>
+        </div>
+        <div id="frames" class="frames">
+          <div class="empty-frame">
+            <span>＋</span>完成的版本會出現在這裡，可點選比較與下載。
+          </div>
+        </div>
+      </section>
+      <section class="how">
+        <div class="how-intro">
+          <span class="mono">HOW THE MAGIC WORKS</span>
+          <h2>用一連串選擇，<br />畫出一個想像。</h2>
+        </div>
+        <article>
+          <span>01 / IMAGINE</span>
+          <h3>描述你的畫面</h3>
+          <p>物件、位置、背景與色彩，都是 Jev 判斷的線索。</p>
+        </article>
+        <article>
+          <span>02 / DECIDE</span>
+          <h3>每一格，選一個顏色</h3>
+          <p>
+            構圖引導先讓 Jev 選擇幾何形狀與位置，再將 256
+            個像素分四批選色。關閉引導可比較純分類結果。
+          </p>
+        </article>
+        <article>
+          <span>03 / REFINE</span>
+          <h3>看鄰居，再想一次</h3>
+          <p>
+            下一輪讀取前一輪的局部色塊，重新選色。這是分類器創作實驗，並非擴散模型。
+          </p>
+        </article>
+      </section>
+      <footer>
+        <span><b>JEV PIXEL LAB</b> Built with curiosity & TypeSafe.</span
+        ><a
+          href="https://github.com/Wizhill05/typesafe-image-diffusion"
+          target="_blank"
+          rel="noreferrer"
+          >Inspired by the community pixel experiment ↗</a
+        >
+      </footer>
+    </main>
+  </body>
+</html>
